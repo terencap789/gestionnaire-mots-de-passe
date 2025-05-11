@@ -4,225 +4,180 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestionnaire de mots de passe</title>
-  <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1-crypto-js.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    section {
+      margin-bottom: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0 15px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
 </head>
 <body>
+
   <h1>Gestionnaire de mots de passe</h1>
 
-  <!-- Interface Utilisateur -->
+  <!-- Ajouter un mot de passe -->
   <section>
-    <h2>1. Générer un mot de passe</h2>
-    <label>Nom: <input type="text" id="nom"></label>
-    <label>Identifiant: <input type="text" id="identifiant"></label>
-    <label>Taille: <input type="number" id="taille" min="1"></label>
-    <label>Type de caractères:
-      <select id="type">
-        <option value="1">Lettres uniquement</option>
-        <option value="2">Chiffres uniquement</option>
-        <option value="3">Lettres et chiffres</option>
-        <option value="4">Lettres et caractères spéciaux</option>
-        <option value="5">Chiffres et caractères spéciaux</option>
-        <option value="6">Lettres, chiffres et caractères spéciaux</option>
-      </select>
-    </label>
-    <button onclick="genererMotDePasse()">Générer et enregistrer</button>
-  </section>
-
-  <section>
-    <h2>2. Ajouter un mot de passe existant</h2>
-    <label>Nom: <input type="text" id="nomAjout"></label>
-    <label>Identifiant: <input type="text" id="idAjout"></label>
-    <label>Mot de passe: <input type="text" id="mdpAjout"></label>
+    <h2>Ajouter un mot de passe</h2>
+    <label for="nomAjout">Nom :</label>
+    <input type="text" id="nomAjout" placeholder="Nom">
+    <label for="idAjout">Identifiant :</label>
+    <input type="text" id="idAjout" placeholder="Identifiant">
+    <label for="mdpAjout">Mot de passe :</label>
+    <input type="text" id="mdpAjout" placeholder="Mot de passe">
     <button onclick="ajouterMdpExistant()">Ajouter</button>
   </section>
 
+  <!-- Afficher les mots de passe -->
   <section>
-    <h2>3. Supprimer un mot de passe</h2>
-    <label>Nom à supprimer: <input type="text" id="nomSuppr"></label>
-    <button onclick="supprimerMotDePasse()">Supprimer</button>
-  </section>
-
-  <section>
-    <h2>4. Mots de passe enregistrés</h2>
+    <h2>Afficher les mots de passe</h2>
     <button onclick="afficherMotsDePasse()">Afficher</button>
     <pre id="affichage"></pre>
   </section>
 
+  <!-- Exporter les données -->
   <section>
-    <h2>5. Sauvegarder les données</h2>
-    <button onclick="sauvegarderDonnees()">Sauvegarder toutes les données (sel, clé, mots de passe)</button>
+    <h2>Exporter les données</h2>
+    <button onclick="exporterDonnees()">Exporter</button>
   </section>
 
+  <!-- Importer des données -->
   <section>
-    <h2>6. Télécharger les données sauvegardées</h2>
-    <button onclick="telechargerDonnees()">Télécharger les données sauvegardées</button>
-  </section>
-
-  <section>
-    <h2>7. Importer des données</h2>
-    <input type="file" id="importFile" accept=".json">
-    <button onclick="importerDonnees()">Importer les données</button>
+    <h2>Importer des données</h2>
+    <input type="file" onchange="importerDonnees(event)">
   </section>
 
   <script>
-    // Fonction pour générer une clé secrète
-    function genererCleSecrete(salt) {
-      const date = new Date();
-      const facteurDynamique = date.getFullYear() + "-" + (date.getMonth() + 1);
-      return CryptoJS.SHA256(salt + facteurDynamique).toString();
-    }
-
-    // Fonction pour obtenir le sel
-    function getSalt() {
-      let salt = localStorage.getItem('salt');
-      if (!salt) {
-        salt = CryptoJS.lib.WordArray.random(128/8).toString();
-        localStorage.setItem('salt', salt);
-      }
-      return salt;
-    }
-
-    // Essayer de récupérer la clé secrète générée ou la régénérer si nécessaire
-    const salt = getSalt();
-    const clefSecrete = genererCleSecrete(salt);
-
-    // Fonction de chiffrement
+    // Fonction de chiffrement du mot de passe
     function chiffrer(motDePasse) {
-      return CryptoJS.AES.encrypt(motDePasse, clefSecrete).toString();
+      const sel = genererSel();
+      const motDePasseChiffre = CryptoJS.AES.encrypt(motDePasse, sel).toString();
+      return { motDePasseChiffre, sel };
     }
 
-    // Fonction de déchiffrement
-    function dechiffrer(motDePasseChiffre) {
-      const bytes = CryptoJS.AES.decrypt(motDePasseChiffre, clefSecrete);
-      return bytes.toString(CryptoJS.enc.Utf8);
+    // Fonction de déchiffrement du mot de passe
+    function dechiffrer(motDePasseChiffre, sel) {
+      const motDePasseDechiffre = CryptoJS.AES.decrypt(motDePasseChiffre, sel).toString(CryptoJS.enc.Utf8);
+      return motDePasseDechiffre;
     }
 
-    function getCaracteres(type) {
-      const lettres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const chiffres = "0123456789";
-      const speciaux = "!@#$%^&*()_+-=[]{}|;:',.<>/?";
-      switch (type) {
-        case "1": return lettres;
-        case "2": return chiffres;
-        case "3": return lettres + chiffres;
-        case "4": return lettres + speciaux;
-        case "5": return chiffres + speciaux;
-        case "6": return lettres + chiffres + speciaux;
-        default: return lettres + chiffres;
-      }
+    // Fonction pour générer un sel aléatoire
+    function genererSel() {
+      return CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Base64);
     }
 
-    function genererMotDePasse() {
-      const nom = document.getElementById("nom").value;
-      const identifiant = document.getElementById("identifiant").value;
-      const taille = parseInt(document.getElementById("taille").value);
-      const type = document.getElementById("type").value;
-      const caracteres = getCaracteres(type);
-
-      let motDePasse = "";
-      for (let i = 0; i < taille; i++) {
-        motDePasse += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-      }
-
-      enregistrer(nom, identifiant, motDePasse);
-      alert("Mot de passe généré et enregistré !");
-    }
-
+    // Ajouter un mot de passe existant
     function ajouterMdpExistant() {
       const nom = document.getElementById("nomAjout").value;
       const identifiant = document.getElementById("idAjout").value;
       const motDePasse = document.getElementById("mdpAjout").value;
-      enregistrer(nom, identifiant, motDePasse);
+
+      if (!nom || !identifiant || !motDePasse) {
+        alert("Tous les champs doivent être remplis.");
+        return;
+      }
+
+      // Chiffrement du mot de passe avant de l'enregistrer
+      const { motDePasseChiffre, sel } = chiffrer(motDePasse);
+      enregistrer(nom, identifiant, motDePasseChiffre, sel);
       alert("Mot de passe ajouté !");
     }
 
-    function enregistrer(nom, identifiant, motDePasse) {
+    // Enregistrer dans le localStorage
+    function enregistrer(nom, identifiant, motDePasseChiffre, sel) {
       const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
-      const motDePasseChiffre = chiffrer(motDePasse); // Chiffre le mot de passe
-      mdps.push({ nom, identifiant, motDePasse: motDePasseChiffre });
+      mdps.push({ nom, identifiant, motDePasseChiffre, sel });
       localStorage.setItem("motsDePasse", JSON.stringify(mdps));
     }
 
+    // Afficher les mots de passe enregistrés
     function afficherMotsDePasse() {
       const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
       const affichage = document.getElementById("affichage");
 
-      affichage.textContent = mdps.map(e => {
-        const motDePasseDechiffre = dechiffrer(e.motDePasse);
-        return `${e.nom} : ${e.identifiant} : ${motDePasseDechiffre}`;
-      }).join("\n") || "Aucun mot de passe enregistré.";
-    }
-
-    function supprimerMotDePasse() {
-      const nom = document.getElementById("nomSuppr").value;
-      let mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
-      const initialLength = mdps.length;
-      mdps = mdps.filter(e => e.nom !== nom);
-
-      if (mdps.length < initialLength) {
-        localStorage.setItem("motsDePasse", JSON.stringify(mdps));
-        alert("Mot de passe supprimé !");
+      if (mdps.length === 0) {
+        affichage.textContent = "Aucun mot de passe enregistré.";
       } else {
-        alert("Aucun mot de passe trouvé avec ce nom.");
+        affichage.textContent = mdps.map(e => {
+          const motDePasseDechiffre = dechiffrer(e.motDePasseChiffre, e.sel);
+          return `${e.nom} : ${e.identifiant} : ${motDePasseDechiffre}`;
+        }).join("\n");
       }
     }
 
-    // Sauvegarder toutes les données : sel, clé et mots de passe
-    function sauvegarderDonnees() {
-      const sel = localStorage.getItem('salt');
-      const cle = clefSecrete;
+    // Exporter les données
+    function exporterDonnees() {
       const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
-
-      const donnees = { sel, cle, mdps };
-      localStorage.setItem("donneesSauvegardees", JSON.stringify(donnees));
-      alert("Données sauvegardées !");
+      const jsonExport = JSON.stringify(mdps);
+      const blob = new Blob([jsonExport], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mots_de_passe.json';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
-    // Télécharger les données sauvegardées
-    function telechargerDonnees() {
-      const donnees = localStorage.getItem("donneesSauvegardees");
-      if (donnees) {
-        const blob = new Blob([donnees], { type: "application/json" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "donnees_sauvegardees.json";
-        link.click();
-      } else {
-        alert("Aucune donnée à télécharger.");
-      }
-    }
-
-    // Importer les données depuis un fichier JSON
-    function importerDonnees() {
-      const fileInput = document.getElementById('importFile');
-      const file = fileInput.files[0];
-
-      if (!file) {
-        alert("Veuillez sélectionner un fichier à importer.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        try {
-          const donnees = JSON.parse(event.target.result);
-          // Restauration du sel et de la clé
-          localStorage.setItem('salt', donnees.sel);
-          // Regénération de la clé à partir du sel importé
-          const cle = genererCleSecrete(donnees.sel);
-          localStorage.setItem('cle', cle);
-
-          // Restauration des mots de passe
-          localStorage.setItem('motsDePasse', JSON.stringify(donnees.mdps));
+    // Importer des données
+    function importerDonnees(event) {
+      const fichier = event.target.files[0];
+      
+      if (fichier) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const jsonData = e.target.result;
+          const mdps = JSON.parse(jsonData);
+          mdps.forEach(mdp => {
+            enregistrer(mdp.nom, mdp.identifiant, mdp.motDePasseChiffre, mdp.sel);
+          });
           alert("Données importées avec succès !");
-        } catch (error) {
-          alert("Erreur lors de l'importation des données.");
-        }
-      };
-
-      reader.readAsText(file);
+        };
+        reader.readAsText(fichier);
+      }
     }
   </script>
+
 </body>
 </html>
