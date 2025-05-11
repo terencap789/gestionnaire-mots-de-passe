@@ -11,9 +11,9 @@
 
   <section>
     <h2>1. Générer un mot de passe</h2>
-    <label>Nom: <input type="text" id="nom"></label><br>
-    <label>Identifiant: <input type="text" id="identifiant"></label><br>
-    <label>Taille: <input type="number" id="taille" min="1"></label><br>
+    <label>Nom: <input type="text" id="nom"></label>
+    <label>Identifiant: <input type="text" id="identifiant"></label>
+    <label>Taille: <input type="number" id="taille" min="1"></label>
     <label>Type de caractères:
       <select id="type">
         <option value="1">Lettres uniquement</option>
@@ -23,21 +23,21 @@
         <option value="5">Chiffres et caractères spéciaux</option>
         <option value="6">Lettres, chiffres et caractères spéciaux</option>
       </select>
-    </label><br>
+    </label>
     <button onclick="genererMotDePasse()">Générer et enregistrer</button>
   </section>
 
   <section>
     <h2>2. Ajouter un mot de passe existant</h2>
-    <label>Nom: <input type="text" id="nomAjout"></label><br>
-    <label>Identifiant: <input type="text" id="idAjout"></label><br>
-    <label>Mot de passe: <input type="text" id="mdpAjout"></label><br>
+    <label>Nom: <input type="text" id="nomAjout"></label>
+    <label>Identifiant: <input type="text" id="idAjout"></label>
+    <label>Mot de passe: <input type="text" id="mdpAjout"></label>
     <button onclick="ajouterMdpExistant()">Ajouter</button>
   </section>
 
   <section>
     <h2>3. Supprimer un mot de passe</h2>
-    <label>Nom à supprimer: <input type="text" id="nomSuppr"></label><br>
+    <label>Nom à supprimer: <input type="text" id="nomSuppr"></label>
     <button onclick="supprimerMotDePasse()">Supprimer</button>
   </section>
 
