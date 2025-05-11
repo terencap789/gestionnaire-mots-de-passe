@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestionnaire de mots de passe</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1-crypto-js.js"></script>
 </head>
 <body>
   <h1>Gestionnaire de mots de passe</h1>
 
+  <!-- Interface Utilisateur -->
   <section>
     <h2>1. Générer un mot de passe</h2>
     <label>Nom: <input type="text" id="nom"></label>
@@ -47,12 +49,59 @@
     <pre id="affichage"></pre>
   </section>
 
+  <section>
+    <h2>5. Sauvegarder les données</h2>
+    <button onclick="sauvegarderDonnees()">Sauvegarder toutes les données (sel, clé, mots de passe)</button>
+  </section>
+
+  <section>
+    <h2>6. Télécharger les données sauvegardées</h2>
+    <button onclick="telechargerDonnees()">Télécharger les données sauvegardées</button>
+  </section>
+
+  <section>
+    <h2>7. Importer des données</h2>
+    <input type="file" id="importFile" accept=".json">
+    <button onclick="importerDonnees()">Importer les données</button>
+  </section>
+
   <script>
-    const lettres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const chiffres = "0123456789";
-    const speciaux = "!@#$%^&*()_+-=[]{}|;:',.<>/?";
+    // Fonction pour générer une clé secrète
+    function genererCleSecrete(salt) {
+      const date = new Date();
+      const facteurDynamique = date.getFullYear() + "-" + (date.getMonth() + 1);
+      return CryptoJS.SHA256(salt + facteurDynamique).toString();
+    }
+
+    // Fonction pour obtenir le sel
+    function getSalt() {
+      let salt = localStorage.getItem('salt');
+      if (!salt) {
+        salt = CryptoJS.lib.WordArray.random(128/8).toString();
+        localStorage.setItem('salt', salt);
+      }
+      return salt;
+    }
+
+    // Essayer de récupérer la clé secrète générée ou la régénérer si nécessaire
+    const salt = getSalt();
+    const clefSecrete = genererCleSecrete(salt);
+
+    // Fonction de chiffrement
+    function chiffrer(motDePasse) {
+      return CryptoJS.AES.encrypt(motDePasse, clefSecrete).toString();
+    }
+
+    // Fonction de déchiffrement
+    function dechiffrer(motDePasseChiffre) {
+      const bytes = CryptoJS.AES.decrypt(motDePasseChiffre, clefSecrete);
+      return bytes.toString(CryptoJS.enc.Utf8);
+    }
 
     function getCaracteres(type) {
+      const lettres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const chiffres = "0123456789";
+      const speciaux = "!@#$%^&*()_+-=[]{}|;:',.<>/?";
       switch (type) {
         case "1": return lettres;
         case "2": return chiffres;
@@ -90,14 +139,19 @@
 
     function enregistrer(nom, identifiant, motDePasse) {
       const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
-      mdps.push({ nom, identifiant, motDePasse });
+      const motDePasseChiffre = chiffrer(motDePasse); // Chiffre le mot de passe
+      mdps.push({ nom, identifiant, motDePasse: motDePasseChiffre });
       localStorage.setItem("motsDePasse", JSON.stringify(mdps));
     }
 
     function afficherMotsDePasse() {
       const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
       const affichage = document.getElementById("affichage");
-      affichage.textContent = mdps.map(e => `${e.nom} : ${e.identifiant} : ${e.motDePasse}`).join("\n") || "Aucun mot de passe enregistré.";
+
+      affichage.textContent = mdps.map(e => {
+        const motDePasseDechiffre = dechiffrer(e.motDePasse);
+        return `${e.nom} : ${e.identifiant} : ${motDePasseDechiffre}`;
+      }).join("\n") || "Aucun mot de passe enregistré.";
     }
 
     function supprimerMotDePasse() {
@@ -112,6 +166,62 @@
       } else {
         alert("Aucun mot de passe trouvé avec ce nom.");
       }
+    }
+
+    // Sauvegarder toutes les données : sel, clé et mots de passe
+    function sauvegarderDonnees() {
+      const sel = localStorage.getItem('salt');
+      const cle = clefSecrete;
+      const mdps = JSON.parse(localStorage.getItem("motsDePasse") || "[]");
+
+      const donnees = { sel, cle, mdps };
+      localStorage.setItem("donneesSauvegardees", JSON.stringify(donnees));
+      alert("Données sauvegardées !");
+    }
+
+    // Télécharger les données sauvegardées
+    function telechargerDonnees() {
+      const donnees = localStorage.getItem("donneesSauvegardees");
+      if (donnees) {
+        const blob = new Blob([donnees], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "donnees_sauvegardees.json";
+        link.click();
+      } else {
+        alert("Aucune donnée à télécharger.");
+      }
+    }
+
+    // Importer les données depuis un fichier JSON
+    function importerDonnees() {
+      const fileInput = document.getElementById('importFile');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Veuillez sélectionner un fichier à importer.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const donnees = JSON.parse(event.target.result);
+          // Restauration du sel et de la clé
+          localStorage.setItem('salt', donnees.sel);
+          // Regénération de la clé à partir du sel importé
+          const cle = genererCleSecrete(donnees.sel);
+          localStorage.setItem('cle', cle);
+
+          // Restauration des mots de passe
+          localStorage.setItem('motsDePasse', JSON.stringify(donnees.mdps));
+          alert("Données importées avec succès !");
+        } catch (error) {
+          alert("Erreur lors de l'importation des données.");
+        }
+      };
+
+      reader.readAsText(file);
     }
   </script>
 </body>
